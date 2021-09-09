@@ -11,12 +11,9 @@ use strict;
 use warnings;
 
 use FindBin;
-use Config::General;
 use Time::Local;
 
-my $cfgname = @ARGV ? shift @ARGV : "$FindBin::Bin/$FindBin::Script.conf";
-my $cfgfile = new Config::General($cfgname) or die "Cannot open $cfgname: $!\n";
-my %Config  = $cfgfile->getall;
+my %Config = %ENV;
 
 my $watch_iface = ($Config{IFACE} || $ARGV[0])
 	or die "Configuration line missing: IFACE=<string>\n";
