@@ -21,6 +21,7 @@ my %Config  = $cfgfile->getall;
 my $watch_iface = ($Config{IFACE} || $ARGV[0])
 	or die "Configuration line missing: IFACE=<string>\n";
 my $BLOCK_TTL  = $Config{BLOCK_TTL} || 3600;
+my $PORT       = $Config{PORT}      || 25;
 
 my  $blocks_filename = $Config{BLOCKS_FILE} || '/var/log/spamblock_blocklist.txt';
 my   $stats_filename = $Config{STATS_FILE}  || '/var/log/spamblock_fullstats.txt';
@@ -150,14 +151,14 @@ import_state();
 $SIG{USR1} = \&import_state;
 $SIG{USR2} = \&export_state;
 
-open F, "tcpdump -lnnqttpi $watch_iface tcp and dst port 25 and 'tcp[13] == 2' 2>&1 |"
+open F, "tcpdump -lnnqttpi $watch_iface tcp and dst port $PORT and 'tcp[13] == 2' 2>&1 |"
 	or die "Cannot run tcpdump: $!\n";
 select((select(F), $|=1)[0]);  # ..disable buffering
 
 while(<F>) {
 	#chomp;
 	#tprint "line = \"$_\"";
-	next unless /^(\d+)\.(\d+) IP (\d+\.\d+\.\d+\.\d+)\.\d+ \> \d+\.\d+\.\d+\.\d+\.25: /;
+	next unless /^(\d+)\.(\d+) IP (\d+\.\d+\.\d+\.\d+)\.\d+ \> \d+\.\d+\.\d+\.\d+\.$PORT: /;
 	my ($tstamp0, $tstamp0_msecs, $ip) = ($1, $2, $3);
 	$total_checks++;
 
