@@ -1,12 +1,12 @@
 #!/usr/bin/perl
 #
-#  spamblock  -- detect and block spammers on FreeBSD- and Linux-based routers.
+#  == spamblock ==
+#  Detect and block spammers/attackers on FreeBSD- and Linux-based routers/servers.
 #
-#  Written at Jun 2009, Apr 2010 by ilya.evseev@gmail.com
-#  Distributed as public domain from here:
-#  http://sources.homelink.ru/spamblock/
+#  Written at Jun 2009, Apr 2010, Sep-2021 by ilya.evseev@gmail.com
 #
-
+#  Distributed as public domain from https://github.com/ilyaevseev/spamblock
+#
 use strict;
 use warnings;
 
