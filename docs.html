@@ -1,0 +1,163 @@
+<html>
+<head>
+<title>SpamBlock</title>
+</head>
+<body>
+<h1>SpamBlock</h1>
+
+<p>Detect and block spammers on the FreeBSD- or Linux-based router.<br/>
+Uses tcpdump for detection and firewall for blocking (pf, ipfw, iptables chain or ipset).
+</p>
+
+<p>Written by ilya.evseev@gmail.com at Jun 2009, Apr 2010.<br/>
+</p>
+
+<p>Announces/discussions:
+<a href="http://www.opennet.ru/opennews/art.shtml?num=22071" >Opennet.ru</a>,
+<a href="http://forum.nag.ru/forum/index.php?showtopic=54539">NAG.ru</a>.
+</p>
+
+<h3>Download</h3>
+
+<p><ul>
+<li><a href="spamblock.txt">Spamblock script (25-Apr-2010)</a></li>
+<li><a href="spamblock.conf.txt">Configuration file sample</a></li>
+</ul><p>
+
+<h3>Requirements</h3>
+
+<p><ul>
+<li>perl modules: Config::General, Time::Local</li>
+<li>tcpdump</li>
+<li>ipfw2, pf, iptables or iptables+ipset</li>
+</ul></p>
+
+<h3>How it works?</h3>
+
+<p>Spamblock counts attempts to establish connection on port 25/tcp via tcpdump.</p>
+
+<p>When somebody exceeds allowed count of attempts per time,<br/>
+he is added to firewall table that should be used like so
+(<a href='#fwtype'>see below</a>):
+<blockquote><pre><tt>ipfw add 100 deny tcp from table(25) to any in</tt></pre></blockquote>
+</p>
+
+<p>Additionaly, email notification is sent.</p>
+
+<h3>Configuration</h3>
+
+<p>By default, configuration file is located in the same folder as binary,<br/>
+with the same name and ".conf" prefix, i.e.: $config = "$0.conf".
+</p><p>
+Optionally, configuration filepath can be explicitly passed to spamblock via command line.
+</p>
+
+<h3>Allowed directives</h3>
+<p>
+<table border="1" cellpadding="8">
+<tr><th>Name</th><th>Value</th><th>Description</th></tr>
+<tr><td>IFACE</td>
+    <td>Required!</td>
+    <td>where to watch packets via tcpdump</td>
+</tr>
+<tr><td>FIREWALL_TYPE</td>
+    <td>pf, ipfw, iptables, ipset or auto (default is "auto")</td>
+    <td>see <a href='#fwtype'>below</a></td>
+</tr>
+<tr><td>POLICY</td>
+    <td>Required!
+    <td>list of "ticks seconds ..." pairs, see below</td>
+</tr>
+<tr><td>BLOCK_TTL</td>
+    <td>3600 (one hour)</td>
+    <td>seconds to skip watching for blocked IP</td>
+</tr>
+<tr><td>BLOCKS_FILE</td>
+    <td>/var/log/spamblock_blocklist.txt</td>
+    <td>filepath to export list of blocked IP's</td>
+</tr>
+<tr><td>STATS_FILE</td>
+    <td>/var/log/spamblock_fullstats.txt</td>
+    <td>filepath to export full information</td>
+</tr>
+<tr><td>EMAIL</td>
+    <td></td>
+    <td>mail notifications to given address</td>
+</tr>
+</table>
+</p>
+
+<h3>Policies</h3>
+
+<p>Consider following policy:
+<blockquote><pre><tt>POLICY="5 1 10 3 15 6 20 10 60 60 300 600 1000 3000"</tt></pre></blockquote>
+</p>
+
+<p>That means:<ul>
+<li>Block IP when more than 5 attempts in one seconds</li>
+<li>...or more than 10 attempts in 3 seconds</li>
+<li>...or more than 15 attempts in 6 seconds</li>
+<li>...or more than 20 in 10s</li>
+<li>...or more than 60 in 60s</li>
+<li>...or more than 300 in 600s</li>
+<li>...or more than 1000 in 3000s</li>
+</ul></p>
+
+<p>Recommended rules for policy pairs:<ul>
+<li>attempts(n) &gt; attempts(n-1)</li>
+<li>seconds(n) &gt; seconds(n-1)</li>
+<li>attempts(n)/seconds(n) &lt; attempts(n-1)/seconds(n-1)</li>
+</ul></p>
+
+<a name='fwtype'><h3>Configure firewalls</h3></a>
+
+<table border="1" cellpadding="8">
+<tr><th>Firewall</th>
+    <th>Spamblock options</th>
+    <th>Firewall rules</th>
+</tr>
+<tr><td>ipfw</td>
+    <td>FIREWALL_TYPE=ipfw<br/>IPFW_TABLE=25</td>
+    <td>deny tcp from table(25) to any 25 in</td>
+</tr>
+<tr><td>pf</td>
+    <td>FIREWALL_TYPE=pf<br/>PF_TABLE=spammers2</td>
+    <td>table &lt;spammers2&gt; persist file "/etc/spammers"<br/>block on em0 proto tcp from &lt;spammers2&gt; to any port 25</td>
+</tr>
+<tr><td>iptables</td>
+    <td>FIREWALL_TYPE=iptables<br/>IPTABLES_CHAIN=spammers3</td>
+    <td>iptables -N spammers3<br/>iptables -A spammers3 -j RETURN<br/>iptables -A FORWARD -p tcp --dport 25 -j spammers3</td>
+</tr>
+<tr><td>ipset</td>
+    <td>FIREWALL_TYPE=ipset<br/>IPSET_NAME=spammers4</td>
+    <td>ipset -N spammers4 iphash --probes 2 --resize 100<br/>iptables -A FORWARD -p tcp --dport 25 -m set --match-set spammers4 src -j DROP</td>
+</tr>
+</tr>
+</table>
+
+<h3>Execution</h3>
+
+<p>Add following line to your <b>rc.local</b>:
+<blockquote><pre><tt>/path/to/spamblock &gt;&gt; /var/log/spamblock.log 2&gt;&amp;1 &amp;</tt></pre></blockquote>
+</p>
+
+<!--
+<h3>Synchronize state</h3>
+
+<p>Import blocks list to spamblock:
+"<tt>kill -USR1 $PID_OF_PERL_RUNNING_SPAMBLOCK</tt>"
+or "<tt>touch /var/lock/spamblock_import.semaphore</tt>"
+</p>
+
+<p>Export spamblock state to file:
+"<tt>kill -USR2 $PID_OF_PERL_RUNNING_SPAMBLOCK</tt>"
+or "<tt>touch /var/lock/spamblock_export.semaphore</tt>"
+</p>
+
+<p>Both filenames are configurable.</p>
+-->
+
+<h3>Enjoy!</h3>
+
+</body>
+</html>
