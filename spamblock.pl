@@ -148,7 +148,7 @@ import_state();
 $SIG{USR1} = \&import_state;
 $SIG{USR2} = \&export_state;
 
-open F, "tcpdump -lnnqttpi $watch_iface tcp and dst port $PORT and 'tcp[13] == 2' 2>&1 |"
+open F, '-|', qw/tcpdump -lnnqttpi/, $watch_iface, qw/tcp and tcp[13]==2 and dst port/, $PORT
 	or die "Cannot run tcpdump: $!\n";
 select((select(F), $|=1)[0]);  # ..disable buffering
 
