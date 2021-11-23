@@ -1,0 +1,19 @@
+[Unit]
+Description = github.com/ilyaevseev/spamblock
+After = network-online.target
+
+[Service]
+Environment = FIREWALL_TYPE=iptables
+Environment = IFACE=eth0
+Environment = PORT=443
+Environment = IPTABLES_CHAIN=spammers_443
+Environment = POLICY="20 1 60 3 90 6 120 10 360 60 1200 300 6000 1000"
+
+ExecStartPre = -/bin/sh -c "iptables -N spammers_443"
+ExecStartPre = -/bin/sh -c "iptables-save | grep -q -- '^-A INPUT -p tcp -m tcp --dport 443 -j spammers_443' || iptables -I INPUT -p tcp --dport 443 -j spammers_443"
+
+ExecStart = /usr/local/spamblock/spamblock.pl
+Restart = on-abort
+
+[Install]
+WantedBy = multi-user.target
